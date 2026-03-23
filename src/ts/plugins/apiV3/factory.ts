@@ -113,6 +113,9 @@ await (async function() {
         if (obj instanceof ArrayBuffer ||
             obj instanceof MessagePort ||
             obj instanceof ImageBitmap ||
+            obj instanceof ReadableStream ||
+            obj instanceof WritableStream ||
+            obj instanceof TransformStream ||
             (typeof OffscreenCanvas !== 'undefined' && obj instanceof OffscreenCanvas)) {
             transferables.push(obj);
         }
@@ -540,9 +543,29 @@ export class SandboxHost {
                         if (typeof instance[data.method!] !== 'function') throw new Error(`Method ${data.method} missing on instance`);
                         result = await instance[data.method!](...args);
                     }
-
-
-                    response.result = this.serialize(result);
+                    // Safari/WebKit can fail when Response.body is sent as a
+                    // transferable stream across postMessage. Pre-read it and
+                    // send plain text instead to avoid duplicate fallback requests.
+                    const isSafari = /Safari/.test(navigator.userAgent) && !/Chrome|Chromium/.test(navigator.userAgent);
+                    if (isSafari && result instanceof Response && result.body) {
+                        try {
+                            const bodyText = await result.text();
+                            response.result = {
+                                __type: 'CALLBACK_STREAMS',
+                                __specialType: 'Response',
+                                value: bodyText,
+                                init: {
+                                    status: result.status,
+                                    statusText: result.statusText,
+                                    headers: Array.from(result.headers.entries())
+                                }
+                            };
+                        } catch (_) {
+                            response.result = this.serialize(result);
+                        }
+                    } else {
+                        response.result = this.serialize(result);
+                    }
 
                 } catch (err: any) {
                     response.error = err.message || "Host execution error";

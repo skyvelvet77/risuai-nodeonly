@@ -3,12 +3,14 @@ name: Build and publish Docker image
 on:
   workflow_dispatch:
   push:
+    branches:
+      - custom
     tags:
       - 'v*'
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: mrbart3885/risuai-nodeonly
+  IMAGE_NAME: ${{ github.repository_owner }}/risuai-nodeonly
 
 jobs:
   build-and-push-image:
@@ -40,9 +42,15 @@ jobs:
             echo "version=$VERSION" >> $GITHUB_OUTPUT
             echo "minor=$MINOR" >> $GITHUB_OUTPUT
             echo "is_tag=true" >> $GITHUB_OUTPUT
+            echo "is_custom=false" >> $GITHUB_OUTPUT
           else
             echo "version=$(git rev-parse --short $GITHUB_SHA)" >> $GITHUB_OUTPUT
             echo "is_tag=false" >> $GITHUB_OUTPUT
+            if [[ "${{ github.ref }}" == "refs/heads/custom" ]]; then
+              echo "is_custom=true" >> $GITHUB_OUTPUT
+            else
+              echo "is_custom=false" >> $GITHUB_OUTPUT
+            fi
           fi
 
       - name: Build and push Docker image
@@ -53,8 +61,11 @@ jobs:
           push: true
           tags: |
             ${{ steps.version.outputs.is_tag == 'true' && format('{0}/{1}:latest', env.REGISTRY, env.IMAGE_NAME) || '' }}
-            ${{ steps.version.outputs.is_tag == 'true' && format('{0}/{1}:v{2}', env.REGISTRY, env.IMAGE_NAME, steps.version.outputs.version) || format('{0}/{1}:{2}', env.REGISTRY, env.IMAGE_NAME, steps.version.outputs.version) }}
+            ${{ steps.version.outputs.is_tag == 'true' && format('{0}/{1}:v{2}', env.REGISTRY, env.IMAGE_NAME, steps.version.outputs.version) || '' }}
             ${{ steps.version.outputs.is_tag == 'true' && format('{0}/{1}:v{2}', env.REGISTRY, env.IMAGE_NAME, steps.version.outputs.minor) || '' }}
+            ${{ steps.version.outputs.is_custom == 'true' && format('{0}/{1}:custom', env.REGISTRY, env.IMAGE_NAME) || '' }}
+            ${{ steps.version.outputs.is_custom == 'true' && format('{0}/{1}:sha-{2}', env.REGISTRY, env.IMAGE_NAME, steps.version.outputs.version) || '' }}
+            ${{ steps.version.outputs.is_tag != 'true' && steps.version.outputs.is_custom != 'true' && format('{0}/{1}:{2}', env.REGISTRY, env.IMAGE_NAME, steps.version.outputs.version) || '' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
