@@ -6,6 +6,7 @@ import { strongBan, tokenizeNum } from "src/ts/tokenizer"
 import { getFreeOpenRouterModels } from "src/ts/model/openrouter"
 import { addFetchLog, fetchNative, globalFetch, textifyReadableStream } from "src/ts/globalApi.svelte"
 import { simplifySchema } from "src/ts/util"
+import { isNodeServer } from "src/ts/platform"
 
 import { extractJSON, getOpenAIJSONSchema } from "../../templates/jsonSchema"
 import { applyChatTemplate } from "../../templates/chatTemplate"
