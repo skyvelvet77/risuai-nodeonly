@@ -1,248 +1,26 @@
-## Project Overview
+# Repository Guidelines
 
-Risuai is a cross-platform AI chatting application built with:
-- **Frontend**: Svelte 5 + TypeScript
-- **Desktop**: Tauri 2.5 (Rust backend)
-- **Build Tool**: Vite 7
-- **Styling**: Tailwind CSS 4
-- **Package Manager**: pnpm
+## Project Structure & Source of Truth
+This fork is the Node-hosted RisuAI reference repo. Main code lives in `src/` with Svelte UI in `src/lib/` and business logic in `src/ts/`. Node hosting code is in `server/node/`; the future Hono path is in `server/hono/`. Static assets live in `public/`, and release helpers live in `scripts/` plus `server.sh` and `update.sh`.
 
-The application allows users to chat with various AI models (OpenAI, Claude, Gemini, and more) through a single unified interface. It features a rich user interface with support for themes, plugins, custom assets, and advanced memory systems.
+Important: I checked `docs/` in this repo and it currently contains only `plans/`, not maintained contributor docs. Treat `README.md`, `README.upstream.md`, `plugins.md`, and `package.json` scripts as the authoritative references.
 
-## Directory Structure
+## Branch Workflow
+This repo has both `origin` (your fork) and `upstream` configured, but it is no longer the actively used custom deployment. Treat this folder as the upstream/reference side. Keep `main` close to upstream or release-sync state, and do day-to-day custom work in `/mnt/j/dev/Risuai-NodeOnly-custom` instead of here.
 
-```
-risuai-newest/
-├── src/                    # Main application source code
-│   ├── ts/                 # TypeScript business logic
-│   ├── lib/                # Svelte UI components
-│   ├── lang/               # Internationalization (i18n)
-│   ├── etc/                # Documentation and extras
-│   └── test/               # Test files
-├── src-tauri/              # Tauri desktop backend (Rust)
-├── server/                 # Self-hosting server implementations
-│   ├── node/               # Node.js server (current)
-│   └── hono/               # Hono framework server (future)
-├── public/                 # Static assets
-├── dist/                   # Build output
-├── resources/              # Application resources
-└── .github/workflows/      # CI/CD pipelines
-```
+## Build, Test, and Development Commands
+- `pnpm dev` starts the Vite dev server.
+- `pnpm runserver` starts the Node server entrypoint in `server/node/server.cjs`.
+- `pnpm build` creates the production web build.
+- `pnpm check` runs `svelte-check` against `tsconfig.json`.
+- `pnpm test` runs Vitest.
+- `pnpm hono:build` builds the web app and post-processes the Hono server bundle.
 
-### Source Code Structure (`/src`)
+## Coding Style & Naming Conventions
+Use Svelte 5 and TypeScript patterns already present in the repo. Keep filenames camelCase, use `.svelte` for components and `.svelte.ts` where rune-based state is already in use, and preserve the NodeOnly assumption that storage, proxying, and assets are server-driven rather than browser-local. Avoid editing `dist/` by hand unless a release workflow explicitly requires it.
 
-#### `/src/ts` - TypeScript Business Logic
+## Testing Guidelines
+Run `pnpm check` and the narrowest relevant `pnpm test` scope before broad changes. If you touch `src/ts/globalApi.svelte.ts`, `src/ts/storage/nodeStorage.ts`, or plugin bridge logic under `src/ts/plugins/`, add or update regression coverage close to the changed code instead of relying on manual Safari retesting alone.
 
-| Directory/File | Purpose |
-|----------------|---------|
-| `storage/` | Data persistence layer (database, save files, platform adapters) |
-| `process/` | Core processing logic (chat, requests, memory, models) |
-| `plugins/` | Plugin system (API v3.0, sandboxing, security) |
-| `gui/` | GUI utilities (colorscheme, highlight, animation) |
-| `drive/` | Cloud sync and backup |
-| `translator/` | Translation system |
-| `model/` | Model definitions and integrations |
-| `sync/` | Multi-user synchronization |
-| `cbs.ts` | Callback system |
-| `characterCards.ts` | Character card import/export |
-| `parser.svelte.ts` | Message parsing |
-| `stores.svelte.ts` | Svelte stores for state management |
-| `globalApi.svelte.ts` | Global API methods |
-| `bootstrap.ts` | Application initialization |
-
-#### `/src/ts/process` - Core Processing
-
-| Directory/File | Purpose |
-|----------------|---------|
-| `index.svelte.ts` | Main chat processing orchestration |
-| `request/` | API request handlers (OpenAI, Anthropic, Google) |
-| `memory/` | Memory systems (HypaMemoryV2/V3, SupaMemory, HanuraiMemory) |
-| `models/` | AI model integrations (NAI, OpenRouter, Ooba, local models) |
-| `templates/` | Prompt templates and formatting |
-| `mcp/` | Model Context Protocol support |
-| `files/` | File handling (inlays, multisend) |
-| `embedding/` | Vector embeddings |
-| `lorebook.svelte.ts` | Lorebook/world info management |
-| `scriptings.ts` | Scripting system |
-| `triggers.ts` | Event triggers |
-| `stableDiff.ts` | Stable Diffusion integration |
-| `tts.ts` | Text-to-speech |
-
-#### `/src/lib` - Svelte UI Components
-
-| Directory | Purpose |
-|-----------|---------|
-| `ChatScreens/` | Chat interface components |
-| `UI/` | General UI components (GUI, NewGUI, Realm) |
-| `Setting/` | Settings panels |
-| `SideBars/` | Sidebar components (Scripts, LoreBook) |
-| `Others/` | Miscellaneous components |
-| `Mobile/` | Mobile-specific UI |
-| `Playground/` | Testing/playground features |
-| `VisualNovel/` | Visual novel mode |
-| `LiteUI/` | Lightweight UI variant |
-
-## Building and Running
-
-### Prerequisites
-
-- Node.js and pnpm
-- Rust and Cargo (for Tauri builds)
-
-### Development
-
-```bash
-# Web development server
-pnpm dev
-
-# Tauri desktop development
-pnpm tauri dev
-```
-
-### Production Builds
-
-```bash
-# Web build
-pnpm build
-
-# Web build for hosting
-pnpm buildsite
-
-# Tauri desktop build
-pnpm tauribuild
-pnpm tauri build
-
-# Hono server build
-pnpm hono:build
-```
-
-### Type Checking
-
-```bash
-pnpm check
-```
-
-## Development Conventions
-
-### Coding Style
-
-- The project uses Prettier for code formatting
-- Ensure code is formatted before committing
-
-### State Management
-
-The project uses Svelte 5 Runes system:
-- `$state`, `$derived`, `$effect` for reactive state
-- Svelte stores (writable, readable) in `stores.svelte.ts`
-
-Key stores:
-- `DBState` - Database state
-- `selectedCharID` - Current character
-- `settingsOpen`, `sideBarStore`, `MobileGUI` - UI state
-- `loadedStore`, `alertStore` - Application state
-- `DynamicGUI` - Responsive layout switching
-
-### File Naming Conventions
-
-- `.svelte.ts` - Svelte 5 files with runes
-- `.svelte` - Svelte component files
-- Use camelCase for file names
-
-### Testing
-
-- Basic test file in `src/test/runTest.ts`
-- Run `pnpm check` for type checking
-- No comprehensive test suite; relies on TypeScript for type safety
-
-## Key Architectural Patterns
-
-### Data Layer
-
-- Database abstraction with multiple storage backends:
-  - Tauri FS, LocalForage, Mobile, Node, OPFS
-- Save file format: `.bin` files with encryption support
-- Character cards: Import/export in various formats (.risum, .risup, .charx)
-
-### Processing Pipeline
-
-1. Chat processing in `process/index.svelte.ts`
-2. Request handling with provider abstraction
-3. Memory systems for context management
-4. Lorebook integration for world info
-
-### Plugin System (API v3.0)
-
-- Iframe-based sandboxing for security
-- SafeDocument/SafeElement wrappers for DOM access
-- Plugin storage (save-specific and device-specific)
-- Custom AI provider support
-- Hot reload support for development
-
-See `plugins.md` for comprehensive plugin development guide.
-
-### UI Architecture
-
-- Component-based with Svelte 5
-- Responsive design with mobile/desktop variants
-- Theme system with custom color schemes
-- Multiple UI modes: Classic, WaifuLike, WaifuCut
-- Dynamic GUI switching based on viewport
-- No traditional router; uses conditional rendering in App.svelte
-
-## Supported AI Providers
-
-- OpenAI (GPT series)
-- Anthropic (Claude)
-- Google (Gemini)
-- DeepInfra
-- OpenRouter
-- AI Horde
-- Ollama
-- Ooba (Text Generation WebUI)
-- Custom providers via plugins
-
-## Internationalization
-
-Supported languages:
-- English (en)
-- Korean (ko)
-- Chinese Simplified (cn)
-- Chinese Traditional (zh-Hant)
-- Vietnamese (vi)
-- German (de)
-- Spanish (es)
-
-Language files are located in `/src/lang/`.
-
-## Deployment Targets
-
-- **Web**: Vite static site
-- **Desktop (Tauri)**: Windows (NSIS), macOS (DMG, APP), Linux (DEB, RPM, AppImage)
-- **Docker**: Container (port 6001)
-- **Self-hosted**: Node.js or Hono server
-
-## Security
-
-- Plugin sandboxing with iframe isolation
-- DOM sanitization with DOMPurify
-- Buffer encryption/decryption utilities
-- CORS handling with proxy support
-- Tauri HTTP plugin for native fetch
-
-## Documentation
-
-| File | Description |
-|------|-------------|
-| `README.md` | Main project documentation |
-| `plugins.md` | Plugin development guide |
-| `AGENTS.md` | AI assistant documentation |
-| `src/ts/plugins/migrationGuide.md` | Plugin API migration guide |
-| `server/hono/README.md` | Hono server documentation |
-| `server/node/readme.md` | Node server documentation |
-
-## Contribution Guidelines
-
-1. Follow the existing coding style and conventions
-2. Run `pnpm check` before submitting a pull request
-3. Ensure your code is well-tested
-4. Format code with Prettier before committing
+## Commit & PR Guidelines
+Recent history uses short prefixes such as `feat:`, `fix:`, `docs:`, `chore:`, and occasional merge commits. Keep that style. PRs should explain the NodeOnly-specific behavior change, list verification commands, and call out any divergence from upstream `RisuAI` so future ports stay manageable. Do not push custom changes straight to `upstream`, and avoid using this repo as the primary place for active user-facing customization.
